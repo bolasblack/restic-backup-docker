@@ -1,6 +1,7 @@
 #!/bin/sh
 
 lastLogfile="/var/log/backup-last.log"
+lastResticLogfile="/var/log/restic-last.log"
 lastMailLogfile="/var/log/mail-last.log"
 lastMicrosoftTeamsLogfile="/var/log/microsoft-teams-last.log"
 
@@ -26,7 +27,7 @@ else
 fi
 
 start=`date +%s`
-rm -f ${lastLogfile} ${lastMailLogfile}
+rm -f "${lastLogfile}" "${lastResticLogfile}" "${lastMailLogfile}" "${lastMicrosoftTeamsLogfile}"
 echo "Starting Backup at $(date +"%Y-%m-%d %H:%M:%S")"
 echo "Starting Backup at $(date)" >> ${lastLogfile}
 logLast "BACKUP_CRON: ${BACKUP_CRON}"
@@ -37,8 +38,10 @@ logLast "RESTIC_REPOSITORY: ${RESTIC_REPOSITORY}"
 logLast "AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}"
 
 # Do not save full backup log to logfile but to backup-last.log
-restic backup ${backupSources} ${RESTIC_JOB_ARGS} --tag=${RESTIC_TAG?"Missing environment variable RESTIC_TAG"} >> ${lastLogfile} 2>&1
+restic backup ${backupSources} ${RESTIC_JOB_ARGS} --tag=${RESTIC_TAG?"Missing environment variable RESTIC_TAG"} >> "${lastResticLogfile}" 2>&1
 backupRC=$?
+
+cat "$lastResticLogfile" >> "${lastLogfile}"
 logLast "Finished backup at $(date)"
 if [[ $backupRC == 0 ]]; then
     echo "Backup Successful"
@@ -66,7 +69,12 @@ end=`date +%s`
 echo "Finished Backup at $(date +"%Y-%m-%d %H:%M:%S") after $((end-start)) seconds"
 
 if [ -n "${TEAMS_WEBHOOK_URL}" ]; then
-    /send_notification.py "${lastLogfile}" "${lastMicrosoftTeamsLogfile}" "${TEAMS_WEBHOOK_URL}"
+    local TEAMS_WEBHOOK_LOGFILE="${lastLogfile}"
+    if [ -z "$TEAMS_WEBHOOK_SIMPLE_SUMMARY" ]; then
+        TEAMS_WEBHOOK_LOGFILE="${lastResticLogfile}"
+    fi
+
+    /send_notification.py "${TEAMS_WEBHOOK_LOGFILE}" "${lastMicrosoftTeamsLogfile}" "${TEAMS_WEBHOOK_URL}"
     if [ $? == 0 ]; then
         echo "Microsoft Teams notification successfully sent."
     else
