@@ -15,7 +15,7 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then \
 
 FROM docker.io/restic/restic:0.18.0
 
-RUN apk add --update --no-cache curl mailx shadow
+RUN apk add --update --no-cache curl mailx shadow python3
 
 COPY --from=rclone /bin/rclone /bin/rclone
 
@@ -63,6 +63,7 @@ VOLUME /data
 COPY backup.sh /bin/backup
 COPY check.sh /bin/check
 COPY entry.sh /entry.sh
+COPY send_notification.py /send_notification.py
 
 ENTRYPOINT ["/entry.sh"]
 CMD ["tail","-fn0","/var/log/cron.log"]
