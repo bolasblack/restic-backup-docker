@@ -63,6 +63,7 @@ VOLUME /data
 COPY backup.sh /bin/backup
 COPY check.sh /bin/check
 COPY entry.sh /entry.sh
+COPY send_notification.py /send_notification.py
 
 ENTRYPOINT ["/entry.sh"]
 CMD ["tail","-fn0","/var/log/cron.log"]
